@@ -20,7 +20,7 @@ router.post("/register", async (req, res) => {
         }
         // write a check for mobile number also
 
-        const hashedPassword = await bcrypt.has(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         const userData = new User({
             name,
@@ -29,22 +29,65 @@ router.post("/register", async (req, res) => {
             password: hashedPassword,
         });
 
-        const userResponse = userData.save();
+        const userResponse = await userData.save();
 
         const token = await jwt.sign(
             { userId: userResponse._id },
             process.env.JWT_SECRET
         );
 
-        res.json({ message: "User registered successfully", token: token });
-    } catch (error) {}
-
-    // valid check
-    // error handling
-    // check if already user exists
-    // write into the database
-    // create model/ schema
-    // joi and yup optional
+        res.json({
+            message: "User registered successfully",
+            token: token,
+            name: name,
+        });
+    } catch (error) {
+        console.log(error);
+    }
 });
 
-module.export = router;
+router.post("/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                errorMessage: "Bad Request! Invalid credentials",
+            });
+        }
+
+        const userDetails = await User.findOne({ email });
+
+        if (!userDetails) {
+            return res
+                .status(401)
+                .json({ errorMessage: "Invalid credentials" });
+        }
+
+        const passwordMatch = await bcrypt.compare(
+            password,
+            userDetails.password
+        );
+
+        if (!passwordMatch) {
+            return res
+                .status(401)
+                .json({ errorMessage: "Invalid credentials" });
+        }
+
+        const token = await jwt.sign(
+            { userId: userDetails._id },
+            process.env.JWT_SECRET
+        );
+
+        res.json({
+            message: "User logged in successfully",
+            token: token,
+            name: userDetails.name,
+        });
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+module.exports = router;
