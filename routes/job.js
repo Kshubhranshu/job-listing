@@ -79,13 +79,22 @@ router.get("/job-description/:jobId", async (req, res) => {
 router.get("/all", async (req, res) => {
     try {
         const title = req.query.title || "";
-        const jobList = await Job.find(
-            { title: { $regex: title, $options: "i" } },
-            { companyName: 1 }
-        );
+        const skills = req.query.skills;
+        let filterSkills = skills?.split(",");
 
-        // add filter in the find query with skills
-        // ["html", "css", "js"] this is how skill should be saved in database document
+        let filter = {};
+
+        if (filterSkills) {
+            filter = { skills: { $in: [...filterSkills] } };
+        }
+
+        const jobList = await Job.find(
+            {
+                title: { $regex: title, $options: "i" },
+                ...filter,
+            }
+            // { companyName: 1 }
+        );
 
         res.json({ data: jobList });
     } catch (error) {
